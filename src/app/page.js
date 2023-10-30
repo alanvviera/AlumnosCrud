@@ -1,8 +1,8 @@
 'use client'
-import ContendantCard from "@/components/ContendantCard";
+import CardAlumno from "@/components/CardAlumno";
 import { obtenerDatos } from "@/libs/obtenerDatos";
 import Form from "@/components/Form";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 
 const HomePage = () => {
   const [data, setData] = useState([]);
@@ -12,6 +12,7 @@ const HomePage = () => {
     edad: "",
     carrera: "",
   });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchData = () => {
     obtenerDatos()
@@ -30,26 +31,46 @@ const HomePage = () => {
   const handleFormSubmit = (e) => {
     e.preventDefault();
 
-    fetch("http://localhost:3000/api/registros", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newContendant),
-    })
-      .then((response) => response.json())
-      .then((responseData) => {
-        setData([...data, responseData]);
-        setNewContendant({
-          nombre: "",
-          genero: "Masculino",
-          edad: "",
-          carrera: "",
-        });
+    if (isUpdating) {
+      // Realiza la solicitud de actualización si estamos en modo de actualización
+      fetch(`http://localhost:3000/api/registros/${newContendant.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newContendant),
       })
-      .catch((error) => {
-        console.error("Error adding contendant:", error);
-      });
+        .then((response) => response.json())
+        .then((responseData) => {
+          setIsUpdating(false);
+          onUpdate(responseData);
+        })
+        .catch((error) => {
+          console.error("Error updating contendant:", error);
+        });
+    } else {
+      // Realiza la solicitud de creación si no estamos en modo de actualización
+      fetch("http://localhost:3000/api/registros", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newContendant),
+      })
+        .then((response) => response.json())
+        .then((responseData) => {
+          setData([...data, responseData]);
+          setNewContendant({
+            nombre: "",
+            genero: "Masculino",
+            edad: "",
+            carrera: "",
+          });
+        })
+        .catch((error) => {
+          console.error("Error adding contendant:", error);
+        });
+    }
   };
 
   const handleInputChange = (e) => {
@@ -78,29 +99,37 @@ const HomePage = () => {
     const updatedData = data.map((contendant) =>
       contendant.id === updatedContendant.id ? updatedContendant : contendant
     );
-  
+
     setData(updatedData);
   };
 
   return (
-    <div className="bg-blue-900 min-h-screen text-center ">
-      <h1 className="text-5xl py-7">Api de Waldo</h1>
+    <div className="bg-gray-900 min-h-screen flex flex-col justify-center items-center p-4">
 
-      <div className="flex mx-7 justify-center items-center sm:flex-col lg:flex-row">
-      <Form
-        onFormSubmit={handleFormSubmit}
-        onInputChange={handleInputChange}
-        newContendant={newContendant}
-      />
+      <div div className="max-w-screen-lg ">
+      <Suspense>
+        <Form
+          onFormSubmit={handleFormSubmit}
+          onInputChange={handleInputChange}
+          newContendant={newContendant}
+          isUpdating={isUpdating}
+        />
+        </Suspense>
+      </div>
 
-      <div className="bg-blue-600 lg:ml-7 text-white rounded-md shadow-lg p-4 w-[90%] lg:h-[80vh]">
-        <p className="text-xl mt-6 text-center">Contendientes del apiwaldo</p>
-        <div className="w-full mt-4 items-center flex flex-col overflow-y-scroll sm:max-h-96 lg:max-h-[70vh]">
-          {data.map((contendant) => (
-            <ContendantCard key={contendant.id} contendant={contendant} onDelete={handleDelete} onUpdate={handleUpdate} />
+       <div className="flex flex-col items-center bg-gray-900 text-white rounded-md shadow-lg  mt-4 w-full max-w-screen-lg ">
+        <Suspense>
+       <div className="mt-4 items-center flex flex-col overflow-y-scroll max-h-96 lg:max-h-[70vh] w-full">
+                {data.map((contendant) => (
+            <CardAlumno
+              key={contendant.id}
+              contendant={contendant}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate} 
+            />
           ))}
         </div>
-      </div>
+        </Suspense>
       </div>
     </div>
   );
